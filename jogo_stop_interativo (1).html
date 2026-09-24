@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STOP - Jogo de Palavras Interativo</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        fundoBase: '#090d16',
+                        fundoCard: '#131b2e',
+                        fundoPainel: '#1c263b',
+                        roxoNeon: '#8b5cf6',
+                        verdeNeon: '#10b981',
+                        rosaNeon: '#f43f5e',
+                        azulNeon: '#06b6d4',
+                        amareloNeon: '#f59e0b'
+                    },
+                    boxShadow: {
+                        'neon-azul': '0 0 20px rgba(6, 182, 212, 0.35)',
+                        'neon-rosa': '0 0 25px rgba(244, 63, 94, 0.5)',
+                        'neon-verde': '0 0 20px rgba(16, 185, 129, 0.35)',
+                        'neon-roxo': '0 0 20px rgba(139, 92, 246, 0.4)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #090d16;
+            color: #f1f5f9;
+        }
+        .fonte-jogo {
+            font-family: 'Fredoka', cursive, sans-serif;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0d1117;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #212e4a;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #33466f;
+        }
+        .cartao-vidro {
+            background: rgba(19, 27, 46, 0.88);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .botao-stop-pulso {
+            animation: pulso-vermelho 2s infinite;
+        }
+        @keyframes pulso-vermelho {
+            0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.8); }
+            70% { box-shadow: 0 0 0 22px rgba(244, 63, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
+        }
+        .efeito-riscado {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-cyan-500 selection:text-slate-950">
+
+    <!-- Cabeçalho Principal -->
+    <header class="sticky top-0 z-40 bg-slate-950/90 border-b border-slate-800/80 backdrop-blur-md px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-purple-600 flex items-center justify-center font-fonte-jogo font-bold text-2xl text-white shadow-neon-azul">
+                    S
+                </div>
+                <div>
+                    <h1 class="text-2xl font-fonte-jogo font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-purple-400">
+                        STOP
+                    </h1>
+                    <p class="text-[11px] text-slate-400 hidden sm:block">Jogo de Palavras Interativo Multijogador</p>
+                </div>
+            </div>
+
+            <!-- Código da Sala Badge -->
+            <div id="badgeSala" class="hidden flex items-center gap-2 bg-slate-900/90 px-3.5 py-1.5 rounded-full border border-slate-700/80">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-xs text-slate-400 font-semibold">SALA:</span>
+                <span id="textoCodigoSala" class="font-mono font-bold text-cyan-400 tracking-wider text-sm">--</span>
+                <button onclick="copiarCodigoSala()" title="Copiar código da sala" class="text-slate-400 hover:text-cyan-300 ml-1 transition">
+                    <i class="fa-regular fa-copy"></i>
+                </button>
+            </div>
+
+            <!-- Perfil do Usuário e Alternar Modos -->
+            <div class="flex items-center gap-3">
+                <div id="perfilUsuarioHeader" class="hidden flex items-center gap-2.5 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800">
+                    <span id="headerAvatar" class="text-2xl">🐶</span>
+                    <div class="text-left leading-tight hidden md:block">
+                        <span id="headerNomeJogador" class="text-xs font-semibold text-slate-200 block truncate max-w-[110px]">Jogador</span>
+                        <span id="headerPapelBadge" class="text-[10px] uppercase font-bold text-cyan-400">Aluno</span>
+                    </div>
+                </div>
+
+                <button id="btnAreaProfessor" onclick="abrirModalSenhaProfessor('switch')" class="bg-purple-900/30 border border-purple-500/40 hover:bg-purple-800/40 text-purple-300 text-xs px-3.5 py-2 rounded-xl font-semibold flex items-center gap-2 transition shadow-neon-roxo">
+                    <i class="fa-solid fa-user-shield text-xs"></i>
+                    <span>Área do Professor</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 md:p-8 flex flex-col justify-center">
+
+        <!-- TELA 1: SALA DE ESPAÇO / ENTRADA (LOBBY) -->
+        <section id="telaLobby" class="max-w-2xl mx-auto w-full">
+            <div class="cartao-vidro rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+                <div class="text-center space-y-2">
+                    <div class="inline-block px-3.5 py-1 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded-full text-xs font-semibold uppercase tracking-wider mb-1">
+                        Jogo das Palavras
+                    </div>
+                    <h2 class="text-3xl sm:text-4xl font-fonte-jogo font-bold text-white">Entrar na Partida</h2>
+                    <p class="text-slate-400 text-sm">Escolha seu avatar, seu nome e informe o código da sala para começar!</p>
+                </div>
+
+                <!-- Escolha do Avatar (16 Opções) -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
+                        Escolha seu Avatar (16 Opções)
+                    </label>
+                    <div id="gradeAvatares" class="grid grid-cols-4 sm:grid-cols-8 gap-2.5 p-3.5 bg-slate-950/70 rounded-2xl border border-slate-800/80">
+                        <!-- Avatares gerados via JS -->
+                    </div>
+                </div>
+
+                <!-- Formulário de Nome e Sala -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Seu Nome / Apelido</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-user absolute left-3.5 top-3.5 text-slate-500"></i>
+                            <input type="text" id="inputNomeJogador" placeholder="Ex: Gabriel" maxlength="15" 
+                                class="w-full bg-slate-950/90 border border-slate-700/80 rounded-xl py-2.5 pl-10 pr-3 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Código da Sala</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-key absolute left-3.5 top-3.5 text-slate-500"></i>
+                            <input type="text" id="inputCodigoSala" value="STOP123" maxlength="10" 
+                                class="w-full bg-slate-950/90 border border-slate-700/80 rounded-xl py-2.5 pl-10 pr-3 text-white uppercase tracking-wider font-mono placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botoes de Acao -->
+                <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                    <button onclick="entrarComoAluno()" class="flex-1 bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold py-3.5 px-6 rounded-2xl shadow-neon-azul font-fonte-jogo text-lg flex items-center justify-center gap-2 transition transform active:scale-95">
+                        <i class="fa-solid fa-gamepad text-xl"></i>
+                        Entrar como Aluno
+                    </button>
+                    <button onclick="abrirModalSenhaProfessor('create')" class="bg-slate-900 hover:bg-slate-800 text-purple-300 border border-purple-500/40 font-semibold py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 transition">
+                        <i class="fa-solid fa-lock text-xs text-purple-400"></i>
+                        Entrar como Professor
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TELA 2: PARTIDA EM ANDAMENTO (GAMEPLAY) -->
+        <section id="telaJogo" class="hidden space-y-6">
+
+            <!-- Banner Superior da Rodada -->
+            <div class="cartao-vidro rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-5 border-l-4 border-l-cyan-500">
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <div id="cardLetraSorteada" class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-tr from-cyan-600 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-4xl sm:text-5xl font-fonte-jogo font-bold text-white shadow-neon-azul border border-white/20">
+                            ?
+                        </div>
+                        <span class="absolute -top-2 -right-2 bg-emerald-500 text-slate-950 font-bold text-[10px] px-2 py-0.5 rounded-full uppercase shadow">Letra</span>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span id="badgeNumeroRodada" class="bg-slate-900 text-slate-300 text-xs px-2.5 py-1 rounded-lg font-semibold border border-slate-800">Rodada 1</span>
+                            <span id="badgeStatusJogo" class="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs px-2.5 py-1 rounded-lg font-semibold">Aguardando Início</span>
+                        </div>
+                        <h2 class="text-xl sm:text-2xl font-fonte-jogo font-bold text-white mt-1">Preencha os campos com a letra!</h2>
+                        <p class="text-xs text-slate-400">Seja rápido! Assim que terminar de preencher, clique no botão STOP!</p>
+                    </div>
+                </div>
+
+                <!-- Relógio e Botão STOP! -->
+                <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                    <div class="text-center px-4 py-2 bg-slate-950/80 rounded-2xl border border-slate-800 min-w-[110px]">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Tempo Restante</span>
+                        <span id="displayCronometro" class="font-mono text-2xl font-bold text-cyan-400">--:--</span>
+                    </div>
+
+                    <button id="btnStop" onclick="acionarStop()" disabled class="botao-stop-pulso bg-gradient-to-r from-rose-600 via-red-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 disabled:opacity-40 disabled:cursor-not-allowed disabled:animate-none text-white font-fonte-jogo font-bold text-2xl py-3.5 px-8 rounded-2xl shadow-neon-rosa transition transform active:scale-95 flex items-center gap-2">
+                        <i class="fa-solid fa-hand"></i>
+                        <span>STOP!</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Ficha de Respostas das Categorias -->
+            <div class="cartao-vidro rounded-3xl p-5 sm:p-6 shadow-2xl">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-cyan-400"></i>
+                    Sua Ficha de Respostas
+                </h3>
+
+                <div id="containerCategorias" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Gerado dinamicamente via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Painel de Controle do Professor (Visível apenas para Professor) -->
+        <section id="painelProfessor" class="hidden mt-6 space-y-6">
+            <div class="cartao-vidro rounded-3xl p-6 border-t-4 border-t-purple-500 shadow-2xl">
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-purple-500/20 text-purple-300 text-xs px-2.5 py-0.5 rounded-full font-bold border border-purple-500/30">ÁREA DO PROFESSOR</span>
+                            <span class="text-slate-400 text-xs">Acesso Administrativo</span>
+                        </div>
+                        <h2 class="text-2xl font-fonte-jogo font-bold text-white mt-1">Controle da Partida</h2>
+                    </div>
+
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <button onclick="sortearNovaLetra()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm font-fonte-jogo flex items-center gap-2 shadow-neon-verde transition">
+                            <i class="fa-solid fa-dice text-lg"></i> Sortear Nova Letra
+                        </button>
+                        <button onclick="finalizarRodadaProfessor()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm font-fonte-jogo flex items-center gap-2 transition">
+                            <i class="fa-solid fa-circle-stop"></i> Encerrar Rodada
+                        </button>
+                        <button onclick="reiniciarPartidaCompleta()" class="bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 font-semibold px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition">
+                            <i class="fa-solid fa-rotate-right"></i> Reiniciar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Detalhes e Configurações -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div class="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+                        <div>
+                            <label class="text-xs text-slate-400 font-bold uppercase block mb-1">Letra Atual</label>
+                            <span id="previewLetraProfessor" class="text-3xl font-fonte-jogo font-bold text-cyan-400">?</span>
+                        </div>
+                        <div class="text-right">
+                            <label class="text-xs text-slate-400 font-bold uppercase block mb-1">Letras Já Sorteadas</label>
+                            <span id="listaLetrasUsadas" class="text-xs font-mono text-slate-300 max-w-[140px] truncate block">Nenhuma</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+                        <div>
+                            <label class="text-xs text-slate-400 font-bold uppercase block mb-1">Tempo de Rodada</label>
+                            <select id="selectTempo" onchange="alterarConfiguracaoTempo()" class="bg-slate-900 border border-slate-700 text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-500">
+                                <option value="0">Sem Tempo Limite</option>
+                                <option value="60" selected>60 Segundos</option>
+                                <option value="90">90 Segundos</option>
+                                <option value="120">120 Segundos</option>
+                            </select>
+                        </div>
+                        <i class="fa-solid fa-clock text-slate-600 text-2xl"></i>
+                    </div>
+
+                    <div class="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+                        <div>
+                            <label class="text-xs text-slate-400 font-bold uppercase block mb-1">Jogadores Conectados</label>
+                            <span id="contadorJogadores" class="text-2xl font-fonte-jogo font-bold text-emerald-400">1</span>
+                        </div>
+                        <i class="fa-solid fa-users text-slate-600 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TELA 3: RESULTADOS E MODERAÇÃO COLETIVA -->
+        <section id="telaResultados" class="hidden space-y-6">
+            <div class="cartao-vidro rounded-3xl p-6 shadow-2xl space-y-4">
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+                    <div>
+                        <div class="inline-block px-3 py-0.5 bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 rounded-full text-xs font-bold uppercase mb-1">
+                            Avaliação Coletiva das Palavras
+                        </div>
+                        <h2 class="text-2xl font-fonte-jogo font-bold text-white">Revisão de Palavras da Rodada</h2>
+                        <p class="text-xs text-slate-300 mt-1">
+                            <i class="fa-solid fa-hand-pointer text-cyan-400"></i> 
+                            <strong class="text-cyan-300">TODOS PODEM AVALIAR:</strong> Clique em qualquer palavra abaixo para alternar entre:
+                            <span class="text-emerald-400 font-bold">✔️ 10 Pts (Válida)</span>, 
+                            <span class="text-amber-400 font-bold">🟡 5 Pts (Repetida)</span> ou 
+                            <span class="text-rose-400 font-bold">❌ 0 Pts (Zerada/Inventada)</span>.
+                        </p>
+                    </div>
+
+                    <div id="acoesAvancarProfessor" class="hidden flex items-center gap-2">
+                        <button onclick="confirmarPontosEAvancar()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2.5 rounded-2xl font-fonte-jogo text-sm shadow-neon-verde transition flex items-center gap-2">
+                            <i class="fa-solid fa-check"></i>
+                            Confirmar Pontos e Próxima Rodada
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabela de Moderação das Palavras -->
+                <div class="overflow-x-auto rounded-2xl border border-slate-800">
+                    <table class="w-full text-left border-collapse min-w-[750px]">
+                        <thead>
+                            <tr class="bg-slate-950/90 text-slate-400 uppercase text-[11px] font-bold border-b border-slate-800">
+                                <th class="p-3">Jogador</th>
+                                <th class="p-3">👤 Nome</th>
+                                <th class="p-3">🐶 Animal</th>
+                                <th class="p-3">🚗 Carro</th>
+                                <th class="p-3">🍎 Fruta</th>
+                                <th class="p-3">🎨 Cor</th>
+                                <th class="p-3">🏠 Objeto</th>
+                                <th class="p-3 text-right">Total Rodada</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabelaResultados" class="divide-y divide-slate-800/60 text-sm">
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tabela de Classificação / Ranking Geral -->
+            <div class="cartao-vidro rounded-3xl p-6 shadow-2xl">
+                <h3 class="text-lg font-fonte-jogo font-bold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-trophy text-amber-400 text-xl"></i>
+                    Placar Geral de Classificação
+                </h3>
+
+                <div id="listaRankingGeral" class="space-y-3">
+                    <!-- Preenchido via JS -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Rodapé -->
+    <footer class="bg-slate-950 border-t border-slate-900 py-3.5 px-4 text-center text-xs text-slate-500">
+        <p>STOP • Moderação Coletiva e Área do Professor com Senha</p>
+    </footer>
+
+    <!-- MODAL DE SENHA DO PROFESSOR -->
+    <div id="modalSenhaProfessor" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="cartao-vidro max-w-sm w-full rounded-3xl p-6 border border-slate-700 shadow-2xl space-y-4">
+            <div class="text-center space-y-1">
+                <div class="w-12 h-12 rounded-2xl bg-purple-500/20 text-purple-400 flex items-center justify-center mx-auto text-xl border border-purple-500/30">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h3 class="text-xl font-fonte-jogo font-bold text-white">Acesso do Professor</h3>
+                <p class="text-xs text-slate-400">Digite a senha para acessar os controles administrativos.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase text-slate-300 mb-1">Senha de Acesso</label>
+                <input type="password" id="inputSenhaProfessor" placeholder="Digite a senha..." 
+                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-purple-500">
+                <p id="msgErroSenha" class="text-xs text-rose-400 mt-1.5 hidden">Senha incorreta! Tente novamente. (Padrão: <span class="font-mono font-bold">prof123</span>)</p>
+            </div>
+
+            <div class="flex items-center gap-2 pt-2">
+                <button onclick="fecharModalSenha()" class="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-bold py-2.5 rounded-xl transition">
+                    Cancelar
+                </button>
+                <button onclick="validarSenhaProfessor()" class="flex-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2.5 rounded-xl shadow-neon-roxo transition">
+                    Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA JAVASCRIPT COMPLETA -->
+    <script>
+        // Configurações Globais
+        const SENHA_PADRAO_PROFESSOR = "prof123";
+
+        // Galeria de 16 Avatares Divertidos
+        const GALERIA_AVATARES = [
+            '🐶', '🐱', '🦊', '🦁', '🐸', '🦄', '🤖', '🚀',
+            '🐼', '🐯', '🐙', '👽', '👾', '🐉', '👑', '🎭'
+        ];
+
+        // Categorias em PT-BR
+        const CATEGORIAS = [
+            { id: 'nome', rótulo: 'Nome', icone: 'fa-user' },
+            { id: 'animal', rótulo: 'Animal', icone: 'fa-paw' },
+            { id: 'carro', rótulo: 'Carro', icone: 'fa-car' },
+            { id: 'fruta', rótulo: 'Fruta', icone: 'fa-apple-whole' },
+            { id: 'cor', rótulo: 'Cor', icone: 'fa-palette' },
+            { id: 'objeto', rótulo: 'Objeto', icone: 'fa-cube' }
+        ];
+
+        const ALFABETO = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V'];
+
+        // Estado do Jogo
+        let estado = {
+            idJogador: 'jog_' + Math.random().toString(36).substr(2, 9),
+            nomeJogador: '',
+            avatar: '🐶',
+            papel: 'aluno', // 'aluno' ou 'professor'
+            professorAutenticado: false,
+            codigoSala: 'STOP123',
+            letraAtual: '',
+            letrasUsadas: [],
+            numeroRodada: 1,
+            statusJogo: 'LOBBY', // LOBBY, JOGANDO, STOPPED, RESULTADOS
+            duracaoTempo: 60,
+            tempoRestante: 60,
+            intervaloTempo: null,
+            acaoPendenteProfessor: null, // 'create' ou 'switch'
+            jogadores: {}, // { idJogador: { nome, avatar, pontuacaoTotal, respostas: {}, pontuacaoRodada: {} } }
+            respostasLocais: {}
+        };
+
+        // Engine de Sincronização em Tempo Real (BroadcastChannel para abas/dispositivos na mesma rede)
+        let canalSincronizacao = null;
+
+        // Gerador de Efeitos Sonoros com Sintetizador Web Audio
+        const Sons = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            },
+            tocarTom(freq, duracao, tipo = 'sine') {
+                try {
+                    this.init();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = tipo;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duracao);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duracao);
+                } catch(e) {}
+            },
+            clique() { this.tocarTom(600, 0.05); },
+            correto() { this.tocarTom(880, 0.12); },
+            mudarPonto() { this.tocarTom(520, 0.08, 'triangle'); },
+            stop() {
+                this.tocarTom(400, 0.1, 'square');
+                setTimeout(() => this.tocarTom(300, 0.35, 'square'), 100);
+            },
+            giro() { this.tocarTom(1100, 0.03, 'triangle'); }
+        };
+
+        function inicializarCanalSincronizacao() {
+            if (canalSincronizacao) canalSincronizacao.close();
+            canalSincronizacao = new BroadcastChannel(`sala_stop_${estado.codigoSala}`);
+
+            canalSincronizacao.onmessage = (evento) => {
+                const msg = evento.data;
+                if (!msg || !msg.tipo) return;
+
+                switch(msg.tipo) {
+                    case 'NOVO_JOGADOR':
+                        tratarNovoJogadorRemoto(msg.jogador);
+                        break;
+                    case 'INICIO_RODADA':
+                        tratarInicioRodadaRemoto(msg.letra, msg.numeroRodada, msg.letrasUsadas);
+                        break;
+                    case 'DISPARO_STOP':
+                        tratarStopRemoto(msg.porJogador);
+                        break;
+                    case 'ENVIO_RESPOSTAS':
+                        tratarRespostasRemotas(msg.idJogador, msg.respostas);
+                        break;
+                    case 'MODERACAO_PALAVRA':
+                        tratarModeracaoRemota(msg.idJogadorAlvo, msg.idCategoria, msg.novosPontos);
+                        break;
+                    case 'PONTOS_CONFIRMADOS':
+                        tratarPontosConfirmadosRemotos(msg.jogadores, msg.numeroRodada);
+                        break;
+                    case 'SOLICITAR_ESTADO':
+                        if (estado.papel === 'professor') {
+                            enviarBroadcast('RESPOSTA_ESTADO', { estadoCompleto: estado });
+                        }
+                        break;
+                }
+            };
+
+            // Anunciar entrada na sala
+            enviarBroadcast('NOVO_JOGADOR', {
+                jogador: {
+                    id: estado.idJogador,
+                    nome: estado.nomeJogador,
+                    avatar: estado.avatar,
+                    pontuacaoTotal: 0,
+                    papel: estado.papel,
+                    respostas: {},
+                    pontuacaoRodada: {}
+                }
+            });
+        }
+
+        function enviarBroadcast(tipo, dados = {}) {
+            if (canalSincronizacao) {
+                canalSincronizacao.postMessage({
+                    tipo,
+                    remetenteId: estado.idJogador,
+                    ...dados
+                });
+            }
+        }
+
+        // Renderizadores de Interface
+        function renderizarGaleriaAvatares() {
+            const container = document.getElementById('gradeAvatares');
+            container.innerHTML = '';
+            GALERIA_AVATARES.forEach((emoji, idx) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `opcao-avatar text-2xl p-2 rounded-xl transition hover:bg-slate-800 ${idx === 0 ? 'bg-cyan-500/20 border border-cyan-500' : ''}`;
+                btn.innerText = emoji;
+                btn.onclick = () => {
+                    Sons.clique();
+                    document.querySelectorAll('.opcao-avatar').forEach(el => {
+                        el.classList.remove('bg-cyan-500/20', 'border', 'border-cyan-500');
+                    });
+                    btn.classList.add('bg-cyan-500/20', 'border', 'border-cyan-500');
+                    estado.avatar = emoji;
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function renderizarCamposRespostas() {
+            const container = document.getElementById('containerCategorias');
+            container.innerHTML = '';
+
+            CATEGORIAS.forEach(cat => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-950/80 rounded-2xl p-3.5 border border-slate-800 transition focus-within:border-cyan-500/70';
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
+                            <i class="fa-solid ${cat.icone} text-cyan-400"></i>
+                            ${cat.rótulo}
+                        </label>
+                        <span id="badgeVal_${cat.id}" class="text-[10px] font-bold px-2 py-0.5 rounded text-slate-500 bg-slate-900 border border-slate-800">
+                            Aguardando
+                        </span>
+                    </div>
+                    <input type="text" id="campo_${cat.id}" oninput="aoDigitarResposta('${cat.id}', this.value)" 
+                        placeholder="Digite com a letra..." disabled
+                        class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-white text-sm focus:outline-none focus:border-cyan-500 font-medium">
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function aoDigitarResposta(idCat, valor) {
+            estado.respostasLocais[idCat] = valor;
+            const badge = document.getElementById(`badgeVal_${idCat}`);
+            const valLimpo = valor.trim().toUpperCase();
+
+            if (!valLimpo) {
+                badge.innerText = 'Vazio';
+                badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded text-slate-500 bg-slate-900 border border-slate-800';
+                return;
+            }
+
+            if (estado.letraAtual && valLimpo.startsWith(estado.letraAtual)) {
+                badge.innerText = 'Letra OK ✔';
+                badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded text-emerald-400 bg-emerald-500/10 border border-emerald-500/30';
+                Sons.correto();
+            } else {
+                badge.innerText = 'Verificar';
+                badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded text-amber-400 bg-amber-500/10 border border-amber-500/30';
+            }
+        }
+
+        // Entrada e Acesso ao Jogo
+        function entrarComoAluno() {
+            processarEntrada('aluno');
+        }
+
+        function processarEntrada(papel) {
+            const nomeInput = document.getElementById('inputNomeJogador').value.trim();
+            const salaInput = document.getElementById('inputCodigoSala').value.trim().toUpperCase();
+
+            if (!nomeInput) {
+                alert('Por favor, digite seu nome ou apelido!');
+                return;
+            }
+
+            estado.nomeJogador = nomeInput;
+            estado.codigoSala = salaInput || 'STOP123';
+            estado.papel = papel;
+
+            // Registrar jogador no estado
+            estado.jogadores[estado.idJogador] = {
+                id: estado.idJogador,
+                nome: estado.nomeJogador,
+                avatar: estado.avatar,
+                pontuacaoTotal: 0,
+                papel: estado.papel,
+                respostas: {},
+                pontuacaoRodada: {}
+            };
+
+            // Atualizar cabeçalho
+            document.getElementById('headerAvatar').innerText = estado.avatar;
+            document.getElementById('headerNomeJogador').innerText = estado.nomeJogador;
+            document.getElementById('headerPapelBadge').innerText = papel === 'professor' ? 'Professor' : 'Aluno';
+            document.getElementById('textoCodigoSala').innerText = estado.codigoSala;
+
+            document.getElementById('badgeSala').classList.remove('hidden');
+            document.getElementById('perfilUsuarioHeader').classList.remove('hidden');
+
+            // Trocar Telas
+            document.getElementById('telaLobby').classList.add('hidden');
+            document.getElementById('telaJogo').classList.remove('hidden');
+
+            if (papel === 'professor') {
+                document.getElementById('painelProfessor').classList.remove('hidden');
+                document.getElementById('acoesAvancarProfessor').classList.remove('hidden');
+            }
+
+            renderizarCamposRespostas();
+            inicializarCanalSincronizacao();
+            atualizarContadorJogadores();
+        }
+
+        // Validação de Senha do Professor
+        function abrirModalSenhaProfessor(acao = 'switch') {
+            if (estado.professorAutenticado) {
+                executarAcaoProfessor(acao);
+                return;
+            }
+            estado.acaoPendenteProfessor = acao;
+            document.getElementById('msgErroSenha').classList.add('hidden');
+            document.getElementById('inputSenhaProfessor').value = '';
+            document.getElementById('modalSenhaProfessor').classList.remove('hidden');
+            document.getElementById('inputSenhaProfessor').focus();
+        }
+
+        function fecharModalSenha() {
+            document.getElementById('modalSenhaProfessor').classList.add('hidden');
+        }
+
+        function validarSenhaProfessor() {
+            const digitada = document.getElementById('inputSenhaProfessor').value;
+            if (digitada === SENHA_PADRAO_PROFESSOR) {
+                estado.professorAutenticado = true;
+                fecharModalSenha();
+                executarAcaoProfessor(estado.acaoPendenteProfessor);
+            } else {
+                document.getElementById('msgErroSenha').classList.remove('hidden');
+            }
+        }
+
+        function executarAcaoProfessor(acao) {
+            if (acao === 'create') {
+                processarEntrada('professor');
+            } else if (acao === 'switch') {
+                estado.papel = 'professor';
+                document.getElementById('headerPapelBadge').innerText = 'Professor';
+                document.getElementById('painelProfessor').classList.remove('hidden');
+                document.getElementById('acoesAvancarProfessor').classList.remove('hidden');
+            }
+        }
+
+        // Controle da Partida (Sorteio e Início)
+        function sortearNovaLetra() {
+            if (estado.papel !== 'professor') return;
+
+            const disponiveis = ALFABETO.filter(l => !estado.letrasUsadas.includes(l));
+            if (disponiveis.length === 0) {
+                alert('Todas as letras do alfabeto já foram sorteadas!');
+                return;
+            }
+
+            let giros = 0;
+            const maxGiros = 20;
+            const cardDisplay = document.getElementById('cardLetraSorteada');
+
+            const intervaloGiro = setInterval(() => {
+                const letraAleatoria = disponiveis[Math.floor(Math.random() * disponiveis.length)];
+                cardDisplay.innerText = letraAleatoria;
+                document.getElementById('previewLetraProfessor').innerText = letraAleatoria;
+                Sons.giro();
+                giros++;
+
+                if (giros >= maxGiros) {
+                    clearInterval(intervaloGiro);
+                    estado.letraAtual = letraAleatoria;
+                    estado.letrasUsadas.push(letraAleatoria);
+                    document.getElementById('listaLetrasUsadas').innerText = estado.letrasUsadas.join(', ');
+
+                    // Broadcast do início da rodada
+                    enviarBroadcast('INICIO_RODADA', {
+                        letra: estado.letraAtual,
+                        numeroRodada: estado.numeroRodada,
+                        letrasUsadas: estado.letrasUsadas
+                    });
+
+                    iniciarNovaRodadaLocal(estado.letraAtual);
+                }
+            }, 75);
+        }
+
+        function iniciarNovaRodadaLocal(letra) {
+            estado.statusJogo = 'JOGANDO';
+            estado.letraAtual = letra;
+            estado.respostasLocais = {};
+
+            document.getElementById('cardLetraSorteada').innerText = letra;
+            document.getElementById('badgeStatusJogo').innerText = 'Em Andamento';
+            document.getElementById('badgeStatusJogo').className = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs px-2.5 py-1 rounded-lg font-semibold';
+
+            // Habilitar inputs
+            CATEGORIAS.forEach(cat => {
+                const inp = document.getElementById(`campo_${cat.id}`);
+                if (inp) {
+                    inp.value = '';
+                    inp.disabled = false;
+                }
+                const bdg = document.getElementById(`badgeVal_${cat.id}`);
+                if (bdg) {
+                    bdg.innerText = 'Aguardando';
+                    bdg.className = 'text-[10px] font-bold px-2 py-0.5 rounded text-slate-500 bg-slate-900 border border-slate-800';
+                }
+            });
+
+            document.getElementById('btnStop').disabled = false;
+            document.getElementById('telaJogo').classList.remove('hidden');
+            document.getElementById('telaResultados').classList.add('hidden');
+
+            iniciarCronometro();
+        }
+
+        function acionarStop() {
+            Sons.stop();
+            document.getElementById('btnStop').disabled = true;
+
+            enviarBroadcast('DISPARO_STOP', {
+                porJogador: estado.nomeJogador
+            });
+
+            processarStop(estado.nomeJogador);
+        }
+
+        function processarStop(nomeQuemParou) {
+            clearInterval(estado.intervaloTempo);
+            estado.statusJogo = 'STOPPED';
+
+            document.getElementById('badgeStatusJogo').innerText = `STOP! por ${nomeQuemParou}`;
+            document.getElementById('badgeStatusJogo').className = 'bg-rose-500/20 text-rose-300 border border-rose-500/40 text-xs px-2.5 py-1 rounded-lg font-semibold animate-pulse';
+
+            // Desabilitar campos de texto
+            CATEGORIAS.forEach(cat => {
+                const inp = document.getElementById(`campo_${cat.id}`);
+                if (inp) inp.disabled = true;
+            });
+
+            // Salvar respostas do jogador local
+            if (estado.jogadores[estado.idJogador]) {
+                estado.jogadores[estado.idJogador].respostas = { ...estado.respostasLocais };
+            }
+
+            // Enviar respostas via broadcast
+            enviarBroadcast('ENVIO_RESPOSTAS', {
+                idJogador: estado.idJogador,
+                respostas: estado.respostasLocais
+            });
+
+            // Disparar confetes visual
+            try {
+                confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+            } catch(e) {}
+
+            setTimeout(() => {
+                exibirTelaResultados();
+            }, 1000);
+        }
+
+        function exibirTelaResultados() {
+            document.getElementById('telaJogo').classList.add('hidden');
+            document.getElementById('telaResultados').classList.remove('hidden');
+
+            renderizarTabelaModeração();
+            renderizarPlacarRanking();
+        }
+
+        // MODERAÇÃO COLETIVA DAS PALAVRAS (PROFESSOR E ALUNOS)
+        function renderizarTabelaModeração() {
+            const tbody = document.getElementById('corpoTabelaResultados');
+            tbody.innerHTML = '';
+
+            Object.values(estado.jogadores).forEach(jogador => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-900/50 transition';
+
+                let htmlLinha = `<td class="p-3 font-medium text-white flex items-center gap-2">
+                    <span class="text-xl">${jogador.avatar}</span>
+                    <span class="font-bold">${jogador.nome}</span>
+                </td>`;
+
+                let somaRodada = 0;
+
+                CATEGORIAS.forEach(cat => {
+                    const textoResposta = (jogador.respostas && jogador.respostas[cat.id]) ? jogador.respostas[cat.id].trim() : '';
+                    if (!jogador.pontuacaoRodada) jogador.pontuacaoRodada = {};
+
+                    // Atribuição inicial padrão (se ainda não calculada)
+                    if (jogador.pontuacaoRodada[cat.id] === undefined) {
+                        if (textoResposta && textoResposta.toUpperCase().startsWith(estado.letraAtual)) {
+                            jogador.pontuacaoRodada[cat.id] = 10;
+                        } else {
+                            jogador.pontuacaoRodada[cat.id] = 0;
+                        }
+                    }
+
+                    const pts = jogador.pontuacaoRodada[cat.id];
+                    somaRodada += pts;
+
+                    let estiloBadge = 'bg-rose-500/20 text-rose-300 border border-rose-500/40';
+                    let estiloTexto = '';
+                    let labelPontos = '❌ 0 Pts (Zerada)';
+
+                    if (pts === 10) {
+                        estiloBadge = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+                        labelPontos = '✔️ 10 Pts (Válida)';
+                    } else if (pts === 5) {
+                        estiloBadge = 'bg-amber-500/20 text-amber-300 border border-amber-500/40';
+                        labelPontos = '🟡 5 Pts (Repetida)';
+                    } else if (pts === 0) {
+                        estiloTexto = 'efeito-riscado text-rose-400';
+                    }
+
+                    // Ação de clique de moderação liberada para TODOS (Professor e Alunos)
+                    htmlLinha += `
+                        <td class="p-2.5">
+                            <button onclick="alternarPontuacaoPalavra('${jogador.id}', '${cat.id}')" 
+                                title="Clique para alterar a validação desta palavra"
+                                class="text-left w-full p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-cyan-500/60 transition group cursor-pointer">
+                                <span class="font-bold text-slate-200 block truncate text-sm ${estiloTexto}">
+                                    ${textoResposta || '<i class="text-slate-600 font-normal">Sem resposta</i>'}
+                                </span>
+                                <span class="text-[10px] font-bold ${estiloBadge} px-2 py-0.5 rounded-md w-max mt-1 block">
+                                    ${labelPontos}
+                                </span>
+                            </button>
+                        </td>
+                    `;
+                });
+
+                htmlLinha += `<td class="p-3 text-right font-fonte-jogo font-bold text-cyan-400 text-xl">${somaRodada} Pts</td>`;
+                tr.innerHTML = htmlLinha;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Função executada por QUALQUER jogador ao clicar na palavra para validar/invalidadar
+        function alternarPontuacaoPalavra(idAlvo, idCategoria) {
+            const jogador = estado.jogadores[idAlvo];
+            if (!jogador) return;
+
+            const pontosAtuais = jogador.pontuacaoRodada[idCategoria] || 0;
+            let novosPontos = 0;
+
+            // Ciclo: 10 -> 5 -> 0 -> 10
+            if (pontosAtuais === 10) novosPontos = 5;
+            else if (pontosAtuais === 5) novosPontos = 0;
+            else novosPontos = 10;
+
+            jogador.pontuacaoRodada[idCategoria] = novosPontos;
+            Sons.mudarPonto();
+
+            // Sincronizar em tempo real com todos na sala
+            enviarBroadcast('MODERACAO_PALAVRA', {
+                idJogadorAlvo: idAlvo,
+                idCategoria: idCategoria,
+                novosPontos: novosPontos
+            });
+
+            renderizarTabelaModeração();
+        }
+
+        function tratarModeracaoRemota(idAlvo, idCategoria, novosPontos) {
+            if (estado.jogadores[idAlvo]) {
+                if (!estado.jogadores[idAlvo].pontuacaoRodada) {
+                    estado.jogadores[idAlvo].pontuacaoRodada = {};
+                }
+                estado.jogadores[idAlvo].pontuacaoRodada[idCategoria] = novosPontos;
+                renderizarTabelaModeração();
+            }
+        }
+
+        function confirmarPontosEAvancar() {
+            if (estado.papel !== 'professor') return;
+
+            // Somar pontos da rodada na pontuação total
+            Object.values(estado.jogadores).forEach(j => {
+                let soma = 0;
+                if (j.pontuacaoRodada) {
+                    Object.values(j.pontuacaoRodada).forEach(v => soma += v);
+                }
+                j.pontuacaoTotal = (j.pontuacaoTotal || 0) + soma;
+                j.pontuacaoRodada = {};
+                j.respostas = {};
+            });
+
+            estado.numeroRodada++;
+            document.getElementById('badgeNumeroRodada').innerText = `Rodada ${estado.numeroRodada}`;
+
+            enviarBroadcast('PONTOS_CONFIRMADOS', {
+                jogadores: estado.jogadores,
+                numeroRodada: estado.numeroRodada
+            });
+
+            document.getElementById('telaResultados').classList.add('hidden');
+            document.getElementById('telaJogo').classList.remove('hidden');
+            document.getElementById('badgeStatusJogo').innerText = 'Aguardando Início';
+            document.getElementById('badgeStatusJogo').className = 'bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs px-2.5 py-1 rounded-lg font-semibold';
+
+            renderizarPlacarRanking();
+        }
+
+        function renderizarPlacarRanking() {
+            const list = document.getElementById('listaRankingGeral');
+            list.innerHTML = '';
+
+            const ordenados = Object.values(estado.jogadores).sort((a, b) => (b.pontuacaoTotal || 0) - (a.pontuacaoTotal || 0));
+
+            ordenados.forEach((p, idx) => {
+                let badgePosicao = `#${idx + 1}`;
+                if (idx === 0) badgePosicao = '🥇';
+                if (idx === 1) badgePosicao = '🥈';
+                if (idx === 2) badgePosicao = '🥉';
+
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-3.5 bg-slate-950/70 rounded-2xl border border-slate-800';
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl font-fonte-jogo font-bold text-slate-400 w-8 text-center">${badgePosicao}</span>
+                        <span class="text-2xl">${p.avatar}</span>
+                        <div>
+                            <span class="font-bold text-white text-sm block">${p.nome}</span>
+                            <span class="text-[10px] text-slate-400 uppercase font-semibold">${p.papel === 'professor' ? 'Professor' : 'Aluno'}</span>
+                        </div>
+                    </div>
+                    <div class="font-fonte-jogo font-bold text-emerald-400 text-xl">
+                        ${p.pontuacaoTotal || 0} <span class="text-xs text-slate-500 font-normal">Pts</span>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // Cronômetro
+        function iniciarCronometro() {
+            clearInterval(estado.intervaloTempo);
+            if (estado.duracaoTempo <= 0) {
+                document.getElementById('displayCronometro').innerText = '∞';
+                return;
+            }
+
+            estado.tempoRestante = estado.duracaoTempo;
+            atualizarDisplayCronometro();
+
+            estado.intervaloTempo = setInterval(() => {
+                estado.tempoRestante--;
+                atualizarDisplayCronometro();
+
+                if (estado.tempoRestante <= 0) {
+                    clearInterval(estado.intervaloTempo);
+                    acionarStop();
+                }
+            }, 1000);
+        }
+
+        function atualizarDisplayCronometro() {
+            const min = Math.floor(estado.tempoRestante / 60);
+            const seg = estado.tempoRestante % 60;
+            document.getElementById('displayCronometro').innerText = 
+                `${min.toString().padStart(2, '0')}:${seg.toString().padStart(2, '0')}`;
+        }
+
+        function alterarConfiguracaoTempo() {
+            const valor = parseInt(document.getElementById('selectTempo').value, 10);
+            estado.duracaoTempo = valor;
+        }
+
+        // Handlers do Broadcast Remoto
+        function tratarNovoJogadorRemoto(jogador) {
+            if (!jogador) return;
+            estado.jogadores[jogador.id] = jogador;
+            atualizarContadorJogadores();
+            renderizarPlacarRanking();
+        }
+
+        function tratarInicioRodadaRemoto(letra, numRodada, letrasUsadas) {
+            estado.numeroRodada = numRodada;
+            estado.letrasUsadas = letrasUsadas || [];
+            document.getElementById('badgeNumeroRodada').innerText = `Rodada ${estado.numeroRodada}`;
+            iniciarNovaRodadaLocal(letra);
+        }
+
+        function tratarStopRemoto(porJogador) {
+            processarStop(porJogador);
+        }
+
+        function tratarRespostasRemotas(idJogador, respostas) {
+            if (estado.jogadores[idJogador]) {
+                estado.jogadores[idJogador].respostas = respostas;
+            }
+        }
+
+        function tratarPontosConfirmadosRemotos(jogadores, numeroRodada) {
+            estado.jogadores = jogadores;
+            estado.numeroRodada = numeroRodada;
+            document.getElementById('badgeNumeroRodada').innerText = `Rodada ${estado.numeroRodada}`;
+            renderizarPlacarRanking();
+        }
+
+        function atualizarContadorJogadores() {
+            const total = Object.keys(estado.jogadores).length;
+            document.getElementById('contadorJogadores').innerText = total;
+        }
+
+        function reiniciarPartidaCompleta() {
+            if (confirm('Deseja reiniciar todas as pontuações e letras sorteadas da sala?')) {
+                estado.letrasUsadas = [];
+                estado.numeroRodada = 1;
+                Object.values(estado.jogadores).forEach(j => j.pontuacaoTotal = 0);
+                document.getElementById('listaLetrasUsadas').innerText = 'Nenhuma';
+                document.getElementById('badgeNumeroRodada').innerText = 'Rodada 1';
+                renderizarPlacarRanking();
+            }
+        }
+
+        function finalizarRodadaProfessor() {
+            acionarStop();
+        }
+
+        function copiarCodigoSala() {
+            const temp = document.createElement('textarea');
+            temp.value = estado.codigoSala;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            alert(`Código da sala (${estado.codigoSala}) copiado!`);
+        }
+
+        // Inicialização ao carregar a página
+        window.onload = function() {
+            renderizarGaleriaAvatares();
+            renderizarCamposRespostas();
+
+            document.getElementById('inputSenhaProfessor').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') validarSenhaProfessor();
+            });
+        };
+    </script>
+</body>
+</html>
